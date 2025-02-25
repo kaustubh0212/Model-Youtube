@@ -1,0 +1,25 @@
+{
+  "name": "chai_aur_backend",
+  "version": "1.0.0",
+  "description": "model youtube",
+  "keywords": [
+    "javascript",
+    "backend"
+  ],
+  "license": "ISC",
+  "author": "Kaustubh Agrawal",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@emailjs/browser": "^3.11.0",
+    "react-redux": "^9.0.4",
+    "react-scroll": "^1.8.9",
+    "react-select": "^5.7.7",
+    "react-select-async-paginate": "^0.7.3",
+    "redux": "^5.0.0",
+    "redux-thunk": "^3.1.0"
+  }
+}
