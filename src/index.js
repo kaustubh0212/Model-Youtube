@@ -11,7 +11,10 @@ dotenv.config({ path: './env' });  // used in a Node.js application to load envi
 //connectDB()
 
 connectDB().then(() => {
-    app.listen(process.env.PORT, () => {
-        console.log(`App is listening on port ${process.env.PORT}`);
+    app.listen(process.env.PORT || 8000, () => {
+        console.log(`Server is running on port ${process.env.PORT}`);
     });
-});
+})
+.catch((err) => {
+    console.log("MONGO db connection failed !!! ", err);
+})
