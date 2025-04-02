@@ -110,6 +110,13 @@ userSchema.methods.generateRefreshToken = function(){
 }
 
 // both are JWT generated tokens
+// How They Work Together
+// User logs in → Backend sends both an access_token and a refresh_token.
+// Frontend stores the access_token (short-lived, e.g., 15 minutes).
+// For every API request, the frontend sends the access_token.
+// If the access_token expires → Backend rejects the request.
+// Frontend then sends the refresh_token to the backend.
+// If the refresh_token is valid → Backend issues a new access_token.
 
 
 export const User = mongoose.model("User", userSchema)
