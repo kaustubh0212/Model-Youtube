@@ -15,4 +15,15 @@ app.use(express.static("public"))
 
 app.use(cookieParser()) // helps in setting the cookies of the user on the browser
 
+
+// routes import
+
+import userRouter from './routes/user.routes.js'
+
+
+// routes declaration
+
+app.use("/api/v1/users", userRouter)
+//whenever use will go for /users extension, userRouter will run (OR the code will direct to userRouter file)
+
 export { app }
