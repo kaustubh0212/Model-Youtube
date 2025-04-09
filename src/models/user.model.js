@@ -74,7 +74,7 @@ const userSchema =  new Schema(
 userSchema.pre("save", async function (next) { // process takes time so making it async
     if(!this.isModified("password")) return next(); // only if password is modifies in the user schema then only run bcrypt else move to next process
 
-    this.password = bcrypt.hash(this.password, 10)
+    this.password = await bcrypt.hash(this.password, 10)
     next()  // tells mongoose to move to the next task
 })
 
@@ -97,6 +97,7 @@ userSchema.methods.generateAccessToken = function(){
         }
     )
 }
+
 userSchema.methods.generateRefreshToken = function(){
     return jwt.sign(
         {
