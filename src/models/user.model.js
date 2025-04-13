@@ -32,7 +32,7 @@ const userSchema =  new Schema(
             trim: true,
         },
 
-        fullname: {
+        fullName: {
             type: String,
             required: true,
             lowercase: true,
@@ -47,13 +47,13 @@ const userSchema =  new Schema(
 
         coverImage: {
             type: String, // cloudanary URL
-            required: true,
+            //required: true,
         },
 
         watchHistory:  // Array
         [
             {
-                type: Schema.Types.objectId,  // Holds the unique ID of a video.
+                type: Schema.Types.ObjectId,  // Holds the unique ID of a video.
                 ref: "Video"  // Tells MongoDB that "Video" is a schema model where all videos (with their IDs) are stored.
             }
         ],
@@ -89,7 +89,7 @@ userSchema.methods.generateAccessToken = function(){
             _id: this._id,
             email: this.email,
             username: this.username,
-            fullname: this.fullname
+            fullName: this.fullName
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
