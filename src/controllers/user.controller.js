@@ -4,6 +4,24 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
+
+const generateAccessAndRefreshTokens = async(userId) => {
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+
+        user.refreshToken = refreshToken // setting value of refreshToken for the already created user. this token is now also part of MongoDB database
+
+        await user.save({validateBeforeSave: false}) //After editing the database by adding refreshToken, save the database. Also, "{validateBeforeSave: false}" is required because while saving, all the must required fields are also triggered i.e. demanding that they should also be present but we confirm that we dont need to enter all that
+
+        return {accessToken, refreshToken}
+
+    } catch (error) {
+        throw new ApiError(500, "Something went Wrong while generating refresh and access token")
+    }
+}
  
 // process to register the user:
 // 1) get user details from frontend/postman
@@ -60,8 +78,10 @@ const registerUser = asyncHandler( async(req, res) => {
     User.findOne({email}) // if same email return error
     */
 
-    const existedUser = await User.findOne({// if existed user is there then its schema is already created and hence we can simply search for it using User.findOne() where User is the copy of UserSchema we created
+    // if existed user is there then its schema is already created and hence we can simply search for it using User.findOne() where User is the copy of UserSchema we created
+    const existedUser = await User.findOne({
         $or: [{username}, {email}]
+        // The $or syntax in MongoDB (and Mongoose) is used to search for documents that match _any_** of the given conditions**, not all of them.
     })
 
     if(existedUser) {
@@ -196,7 +216,7 @@ const registerUser = asyncHandler( async(req, res) => {
     // 10) remove password and refresh Token
     
     //mongoDB attaches an ID to every entry, with the use of that ID we can fetch user by below Syntax
-    // we put those fields in select() which are or to be removed from the database
+    // we put those fields in select() which are or to be removed from the output coming from the database but does not remove in the database
     const createdUser = await User.findById(user._id).select(
         "-password -refreshToken"
     )
@@ -211,18 +231,128 @@ const registerUser = asyncHandler( async(req, res) => {
 
     return res.status(201).json(
         new ApiResponse(200, createdUser, "User registered successfully")
+        //  201 is actual HTTP response thay goes to the browser
+        // json body response
+        // mostly both are same
     )
     
 })
 
-/*
-Working of above function:
-The user enters their details and clicks Register.
-The frontend sends a request to the server (backend).
-The backend (server) runs registerUser.
-The server responds with { "message": "ok" }.
-The frontend can now show a success message like "Registration Successful!"
-NOTE: If this function is linked to a route like /register, then it runs whenever a POST request is made to /register. Eg: app.post("/register", registerUser);
-*/
+// Working of above function:
+// The user enters their details and clicks Register.
+// The frontend sends a request to the server (backend).
+// The backend (server) runs registerUser.
+// The server responds with { "message": "ok" }.
+// The frontend can now show a success message like "Registration Successful!"
+// NOTE: If this function is linked to a route like /register, then it runs whenever a POST request is made to /register. Eg: app.post("/register", registerUser);
 
-export {registerUser} 
+const loginUser = asyncHandler( async (req, res) => {
+    /*
+    1) req body -> data
+    2) username or email, one must be there
+    3) find the user
+    4) password check
+    5) Create access and refresh token
+    6) send cookie
+    */
+
+    // 1) req body -> data
+    const {email, username, password} = req.body
+
+    // 2) username or email, one must be there
+    if(!username && !email)
+    {
+        throw new ApiError(400, "username or email is required")
+    }
+
+    // 3) find the user
+    const user = await User.findOne({
+        $or: [{username}, {email}]
+    })
+
+    if(!user){
+        throw new ApiError(404, "User does not exist")
+    }
+
+    // 4) password check
+
+    const isPasswordValid = await user.isPasswordCorrect(password)
+    //Very Important Note: we used "user" not "User" which we imported because "User" will be used only when we need predefined functions of MongoDB. But when we need Custom defined functions i.e. what we created in UserSchema, we need to use user whci we used to extract details of existing user from the database
+
+    if(!isPasswordValid){
+        throw new ApiError(404, "Incorrect password given by user")
+    }
+
+
+    // 5) Create access and refresh token
+
+    const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id)
+
+
+    // 6) send cookie
+
+    const loggedInUser = User.findById(user._id).select(" -password -refreshToken")
+
+    /*
+    because the user we currently hold lacks refreshTOken as data so recalling from the database OR other way is:
+    user.refreshToken = refreshToken
+    */
+
+    const options = {
+        // to make sure that cookie is edited from the server / backend only and not the frontend (views only)
+        httpOnly: true, // JavaScript on frontend cannot read/edit this cookie (protects from XSS)
+        secure: true // Only sent over HTTPS
+    }
+
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)  // cookie is stored in the browser for next time verification
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        // this reponse goes to frontend
+        new ApiResponse(
+            200,
+            {
+                user: loggedInUser, accessToken, refreshToken
+            },
+            "User logged in Successfully"
+        )
+    )
+
+})
+
+
+const logoutUser = asyncHandler(async(req, res) =>{
+    // Need to reset both access token and refresh token
+    // See logout routes and auth.middleware.js
+    // in auth.middleware.js, we created req.user because we didn't had direct acccess to user data during logout process
+
+    // clearing cookie from database
+    const updated = await User.findByIdAndUpdate(
+        req.user._id, // how to search
+        {
+            $set: {  // what to update
+                refreshToken: undefined,
+            }
+        },
+        { // to return new value of refreshToken
+            new: true
+        }
+    )
+
+    console.log("updated:", updated);
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken", options)  // clearing cookie from browser
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "User logged out"))
+})
+
+
+export {registerUser, loginUser, logoutUser} 
