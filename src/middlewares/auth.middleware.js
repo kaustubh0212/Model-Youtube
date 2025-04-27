@@ -10,8 +10,10 @@ import { User } from "../models/user.model.js";
 // next : job done, move to next step
 export const verifyJWT = asyncHandler( async(req, res, next) =>{
     try {
-        // check cookieParser in app.js for details
+        // trying to fetech token from browser. If user is logged in, access token exist else doesn't exist.
+        // Check cookieParser in app.js for details
         const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
+        // req.header("Authorization")?.replace("Bearer ", ""), request may come from phone also
     
         if(!token)
         {
@@ -20,10 +22,11 @@ export const verifyJWT = asyncHandler( async(req, res, next) =>{
         }
     
         const decodedToken = await jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+        // hwt.verify() provides decoded token because browser has encrypted token
     
         const user = await User.findById(decodedToken?._id).select("-password -refreshToken")
     
-        console.log("auth.middleware.js\n\n user:\n", user)
+        console.log("\nauth.middleware.js\n user:\n", user)
     
         if(!user)
         {

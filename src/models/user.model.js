@@ -30,7 +30,7 @@ __v
 import mongoose, {Schema} from "mongoose";
 import bcrypt from "bcrypt" // used to hash the password
 
-import jwt from "jsonwebtoken" 
+import jwt from "jsonwebtoken"
 /*
 User logs in → Frontend sends username & password to backend.
 Backend checks credentials → If correct, it creates a JWT token & sends it to frontend.

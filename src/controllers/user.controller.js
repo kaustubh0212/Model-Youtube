@@ -4,12 +4,13 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken"
 
 const generateAccessAndRefreshTokens = async(userId) => {
     try {
         const user = await User.findById(userId)
-        const accessToken = user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
+        const accessToken = await user.generateAccessToken()
+        const refreshToken = await user.generateRefreshToken()
 
 
         user.refreshToken = refreshToken // setting value of refreshToken for the already created user. this token is now also part of MongoDB database
@@ -291,7 +292,7 @@ const loginUser = asyncHandler( async (req, res) => {
 
     // 6) send cookie
 
-    const loggedInUser = User.findById(user._id).select(" -password -refreshToken")
+    const loggedInUser = await User.findById(user._id).select(" -password -refreshToken")
 
     /*
     because the user we currently hold lacks refreshTOken as data so recalling from the database OR other way is:
@@ -304,6 +305,8 @@ const loginUser = asyncHandler( async (req, res) => {
         secure: true // Only sent over HTTPS
     }
 
+    //console.log("Every thing looks good, only respnse to send")
+
     return res
     .status(200)
     .cookie("accessToken", accessToken, options)  // cookie is stored in the browser for next time verification
@@ -313,7 +316,9 @@ const loginUser = asyncHandler( async (req, res) => {
         new ApiResponse(
             200,
             {
-                user: loggedInUser, accessToken, refreshToken
+                user: loggedInUser,
+                accessToken,
+                refreshToken
             },
             "User logged in Successfully"
         )
@@ -340,7 +345,7 @@ const logoutUser = asyncHandler(async(req, res) =>{
         }
     )
 
-    console.log("updated:", updated);
+    //console.log("updated:", updated);
 
     const options = {
         httpOnly: true,
@@ -355,4 +360,87 @@ const logoutUser = asyncHandler(async(req, res) =>{
 })
 
 
-export {registerUser, loginUser, logoutUser} 
+const refreshAccessToken = asyncHandler( async(req, res) => {
+
+    /*
+    todos:
+    step 1: fetch refresh token from user browser
+    step 2: throw error if refresh token not recieved
+    step 3: Decode the fetched refresh token
+    step 4: fetch user from database from the id recieved while decoding and get refresh token held by database. Compare both the refresh token.
+
+    */
+
+    try {
+        // step 1: fetch refresh token from user browser
+        const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+        /*
+        req.body.refreshToken : if refresh token is coming from mobile
+        
+        Web browser (like Chrome) → refresh token is usually stored in cookies. So, req.cookies.refreshToken will have it.
+        
+        Mobile app (like Android/iOS apps) → mobile apps don't automatically use cookies well. Instead, mobile apps send refresh token manually inside request body (like in POST JSON data). So, we need to check req.body.refreshToken. ✅ Works fine for mobile too.
+        */
+    
+        // step 2: throw error if refresh token not recieved
+        if(!incomingRefreshToken)
+        {
+            throw new ApiError(401, "unauthorized request")
+        }
+    
+        // step 3: Decode the fetched refresh token from browser
+        /*
+            when decoded data will come out in below format because in this format only we submitted the data i.e. 
+        return jwt.sign(
+                    {
+                        _id: this._id
+                    },
+                    process.env.REFRESH_TOKEN_SECRET,
+                    {
+                        expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+                    }
+                )
+        */
+    
+        const decodedRefreshToken = await jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+    
+        const user = await User.findById(decodedRefreshToken?._id)
+    
+        if(!user)
+        {
+            throw new ApiError(401, "Invalid Refresh Token")
+        }
+    
+        // step 4: fetch user from database from the id recieved while decoding and get refresh token held by database. Compare both the refresh token
+    
+        if(incomingRefreshToken !== user?.refreshToken)
+        {
+            throw new ApiError(401, "Refresh token is expired or use")
+        }
+    
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+    
+        const [newAccessToken, newRefreshToken] = generateAccessAndRefreshTokens(user._id)
+    
+        return res
+        .status(200)
+        .cookie("accessToken", newAccessToken, options)
+        .cookie("aefreshToken", newRefreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {newAccessToken, refreshToken: newRefreshToken},
+                "Access Token refreshed successfully"
+            )
+        )
+    } catch (error) {
+        
+        throw new ApiError(401, error?.message || "Invalid Refresh Token due to some error")
+    }
+})
+
+
+export {registerUser, loginUser, logoutUser, refreshAccessToken} 
