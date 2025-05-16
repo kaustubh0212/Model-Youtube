@@ -101,7 +101,7 @@ const userSchema =  new Schema(
 
 // pre is a hook which activates when data is just about to reach database. At that point, we do the bcrypt (hashing) of the password. This function will automatically be triggered when the user will be created in order to encrypt the password. other functions will need to becalled explicitely to run
 userSchema.pre("save", async function (next) { // process takes time so making it async
-    if(!this.isModified("password")) return next(); // only if password is modifies in the user schema then only run bcrypt else move to next process
+    if(!this.isModified("password")) return next(); // only if password is modifies in the user schema or a new user is being created then only run bcrypt else move to next process
 
     this.password = await bcrypt.hash(this.password, 10)
     next()  // tells mongoose to move to the next task

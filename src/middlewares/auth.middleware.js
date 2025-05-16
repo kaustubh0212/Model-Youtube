@@ -1,5 +1,5 @@
-// This middle ware will verify whether the user exist or not in the databse
-// middleware has req, res, next
+// This middleware will verify whether the user exist or not in the database
+// Middleware has req, res, next
 
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -10,7 +10,7 @@ import { User } from "../models/user.model.js";
 // next : job done, move to next step
 export const verifyJWT = asyncHandler( async(req, res, next) =>{
     try {
-        // trying to fetech token from browser. If user is logged in, access token exist else doesn't exist.
+        // trying to fetch token from browser. If user is logged in, access token exist else doesn't exist.
         // Check cookieParser in app.js for details
         const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
         // req.header("Authorization")?.replace("Bearer ", ""), request may come from phone also
@@ -22,7 +22,7 @@ export const verifyJWT = asyncHandler( async(req, res, next) =>{
         }
     
         const decodedToken = await jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
-        // hwt.verify() provides decoded token because browser has encrypted token
+        // jwt.verify() provides decoded token because browser has encrypted token
     
         const user = await User.findById(decodedToken?._id).select("-password -refreshToken")
     
@@ -34,7 +34,7 @@ export const verifyJWT = asyncHandler( async(req, res, next) =>{
             throw new ApiError(401, "Invalid Access Token")
         }
     
-        req.user = user; // we are createing req.user (custom) on our own
+        req.user = user; // we are creating req.user (custom) on our own
         next()
 
     } catch (error) {
