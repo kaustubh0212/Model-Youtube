@@ -9,7 +9,7 @@ const storage = multer.diskStorage({
     filename: function (req, file, cb) {
       //const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
       cb(null, file.originalname)
-      // if another file with same name is sent from user then ocerwrite but mostly this file willl be for very short period of time on local server (disk). after that will be deleted so not much issue
+      // if another file with same name is sent from user then overwrite but mostly this file will be for very short period of time on local server (disk). after that will be deleted so not much issue
     }
 })
 

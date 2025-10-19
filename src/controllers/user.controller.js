@@ -61,7 +61,7 @@ const registerUser = asyncHandler( async(req, res) => {
     // 2) validation: data is not empty and in correct format
     
     /*
-    classsic method to check weather data arrived from frontend/postman or not
+    classic method to check weather data arrived from frontend/postman or not
     if(fullName === "")
     {
         throw new ApiError(400, "fullName is Empty");
@@ -268,6 +268,7 @@ const loginUser = asyncHandler( async (req, res) => {
 
     // 3) find the user
     const user = await User.findOne({
+        // returns the complete user object
         $or: [{username}, {email}]
     })
 
@@ -278,7 +279,7 @@ const loginUser = asyncHandler( async (req, res) => {
     // 4) password check
 
     const isPasswordValid = await user.isPasswordCorrect(password)
-    //Very Important Note: we used "user" not "User" which we imported because "User" will be used only when we need predefined functions of MongoDB. But when we need Custom defined functions i.e. what we created in UserSchema, we need to use user whci we used to extract details of existing user from the database
+    //Very Important Note: we used "user" not "User" which we imported because "User" will be used only when we need predefined functions of MongoDB. But when we need Custom defined functions i.e. what we created in UserSchema, we need to use user which we used to extract details of existing user from the database
 
     if(!isPasswordValid){
         throw new ApiError(404, "Incorrect password given by user")
@@ -295,7 +296,7 @@ const loginUser = asyncHandler( async (req, res) => {
     const loggedInUser = await User.findById(user._id).select(" -password -refreshToken")
 
     /*
-    because the user we currently hold lacks refreshTOken as data so recalling from the database OR other way is:
+    because the user we currently hold lacks refreshToken as data so recalling from the database OR other way is:
     user.refreshToken = refreshToken
     */
 
@@ -325,7 +326,6 @@ const loginUser = asyncHandler( async (req, res) => {
     )
 
 })
-
 
 const logoutUser = asyncHandler(async(req, res) =>{
     // Need to reset both access token and refresh token
@@ -359,7 +359,6 @@ const logoutUser = asyncHandler(async(req, res) =>{
     .clearCookie("refreshToken", options)
     .json(new ApiResponse(200, {}, "User logged out"))
 })
-
 
 const refreshAccessToken = asyncHandler( async(req, res) => {
 
@@ -467,7 +466,7 @@ const changeCurrentPassword = asyncHandler( async(req, res) =>{
 const getCurrentUser = asyncHandler( async(req, res) =>{
     return res
     .status(200)
-    .json(200, req.user, "curret user fetched successfully")
+    .json(new ApiResponse(200, req.user, "curret user fetched successfully"))
 })
 
 const updateAccountDetails = asyncHandler( async(req, res) => {
@@ -478,7 +477,7 @@ const updateAccountDetails = asyncHandler( async(req, res) => {
         throw new ApiError(480, "All Fields are required")
     }
 
-    User.findByIdAndUpdate(
+    await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
@@ -491,7 +490,7 @@ const updateAccountDetails = asyncHandler( async(req, res) => {
 
     return res
     .status(200)
-    .json(new ApiResponse(200, user, "Account details updated successfully"))
+    .json(new ApiResponse(200, req.user, "Account details updated successfully"))
 })
 
 const updateUserAvatar = asyncHandler( async(req, res) =>{
@@ -519,11 +518,11 @@ const updateUserAvatar = asyncHandler( async(req, res) =>{
         {new: true}
     ).select("-password")
 
+    // delete old image assignment
+
     return res
     .status(200)
-    .json(
-        new ApiResponse(200, user, "Avatar updated successfully")
-    )
+    .json(new ApiResponse(200, user, "Avatar updated successfully"))
 })
 
 const updateUserCoverImage = asyncHandler( async(req, res) =>{
